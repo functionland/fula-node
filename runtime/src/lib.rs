@@ -42,7 +42,9 @@ pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
 
 /// Import the template pallet.
-pub use pallet_template;
+pub use pallet_treasury;
+pub use pallet_proof;
+pub use pallet_pool;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -91,8 +93,8 @@ pub mod opaque {
 // https://docs.substrate.io/main-docs/build/upgrade#runtime-versioning
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("solochain-template-runtime"),
-	impl_name: create_runtime_str!("solochain-template-runtime"),
+	spec_name: create_runtime_str!("node-fula-runtime"),
+	impl_name: create_runtime_str!("node-fula-runtime"),
 	authoring_version: 1,
 	// The version of the runtime specification. A full node will not attempt to use its native
 	//   runtime in substitute for the on-chain Wasm runtime unless all of `spec_name`,
@@ -244,12 +246,57 @@ impl pallet_sudo::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 	type WeightInfo = pallet_sudo::weights::SubstrateWeight<Runtime>;
 }
+parameter_types! {
+    pub const StorageRewardPeriod: BlockNumber = 14400; // 24 hours
+	#[derive(Clone)]
+    pub const MaxCIDLength: u32 = 64;
+	#[derive(Clone)]
+    pub const MaxProofDataLength: u32 = 1024;
+	#[derive(Clone)]
+    pub const MaxRootHashLength: u32 = 64;
+	#[derive(Clone)]
+    pub const MaxHashLength: u32 = 64;
+	#[derive(Clone)]
+    pub const MaxProofHashesLength: u32 = 64;
+    pub const MiningReward: u64 = 10;
+	pub const MaxPeerIDLength:u32 = 42;
+	pub const MaxPoolParticipants:u32 = 300;
+	pub const StringLimit:u32 = 42;
+	pub const MonthlyStorageCost: Balance = 15;
+}
 
 /// Configure the pallet-template in pallets/template.
-impl pallet_template::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_template::weights::SubstrateWeight<Runtime>;
+impl pallet_treasury::Config for Runtime {
+    type Currency = Balances;
+    type StorageRewardPeriod = StorageRewardPeriod;
+    type RuntimeEvent = RuntimeEvent;
+    type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
+    type MaxCIDLength = MaxCIDLength;
+    type MaxPeerIDLength = MaxPeerIDLength;
+	type MonthlyStorageCost = MonthlyStorageCost;
 }
+
+impl pallet_proof::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+    type Currency = Balances;
+    type StorageRewardPeriod = StorageRewardPeriod;
+    type WeightInfo = pallet_proof::weights::SubstrateWeight<Runtime>;
+    type MaxCIDLength = MaxCIDLength;
+    type TokenBalance = u64;
+	type MiningReward = MiningReward;
+	type MaxProofDataLength = MaxProofDataLength;
+    type MaxRootHashLength = MaxRootHashLength;
+    type MaxHashLength = MaxHashLength;
+    type MaxProofHashesLength = MaxProofHashesLength;
+}
+
+impl pallet_pool::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type WeightInfo = pallet_pool::weights::SubstrateWeight<Runtime>;
+	type StringLimit = StringLimit;
+	type MaxPoolParticipants = MaxPoolParticipants;
+}
+
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
 #[frame_support::runtime]
@@ -290,8 +337,15 @@ mod runtime {
 	pub type Sudo = pallet_sudo;
 
 	// Include the custom logic from the pallet-template in the runtime.
+
 	#[runtime::pallet_index(7)]
-	pub type TemplateModule = pallet_template;
+	pub type TreasuryModule = pallet_treasury;
+
+	#[runtime::pallet_index(8)]
+	pub type ProofModule = pallet_proof;
+
+	#[runtime::pallet_index(9)]
+	pub type PoolModule = pallet_pool;
 }
 
 /// The address format for describing accounts.
@@ -341,7 +395,6 @@ mod benches {
 		[pallet_balances, Balances]
 		[pallet_timestamp, Timestamp]
 		[pallet_sudo, Sudo]
-		[pallet_template, TemplateModule]
 	);
 }
 

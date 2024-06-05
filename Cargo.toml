@@ -1,15 +1,15 @@
 [workspace.package]
-authors = ["Substrate DevHub <https://github.com/substrate-developer-hub>"]
+authors = ["ehsan Shariati <https://github.com/functionland>"]
 edition = "2021"
-repository = "https://github.com/substrate-developer-hub/substrate-node-template/"
+repository = "https://github.com/functionland/fula-node"
 license = "MIT-0"
-homepage = "https://substrate.io"
+homepage = "https://fx.land"
 
 [workspace]
 members = [
     "node",
-    "pallets/template",
     "runtime",
+    "pallets/treasury",
 ]
 resolver = "2"
 [profile.release]
