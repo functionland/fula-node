@@ -17,7 +17,7 @@ use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
-
+use scale_info::{build::Fields, Path, Type, TypeInfo};
 use frame_support::genesis_builder_helper::{build_config, create_default_config};
 pub use frame_support::{
 	construct_runtime, derive_impl, parameter_types,
@@ -45,6 +45,7 @@ pub use sp_runtime::{Perbill, Permill};
 pub use pallet_treasury;
 pub use pallet_proof;
 pub use pallet_pool;
+pub use pallet_data;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -265,6 +266,15 @@ parameter_types! {
 	pub const MonthlyStorageCost: Balance = 15;
 }
 
+impl TypeInfo for MaxCIDLength {
+    type Identity = Self;
+    fn type_info() -> Type {
+        Type::builder()
+            .path(Path::new("MaxCIDLength", module_path!()))
+            .composite(Fields::unit())
+    }
+}
+
 /// Configure the pallet-template in pallets/template.
 impl pallet_treasury::Config for Runtime {
     type Currency = Balances;
@@ -295,6 +305,14 @@ impl pallet_pool::Config for Runtime {
     type WeightInfo = pallet_pool::weights::SubstrateWeight<Runtime>;
 	type StringLimit = StringLimit;
 	type MaxPoolParticipants = MaxPoolParticipants;
+}
+
+impl pallet_data::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type Currency = Balances;
+    type MaxCIDLength = MaxCIDLength; // Use the new type defined above
+    type StringLimit = StringLimit; // Use the new type defined above
+    type WeightInfo = pallet_data::weights::SubstrateWeight<Runtime>;
 }
 
 
@@ -346,6 +364,9 @@ mod runtime {
 
 	#[runtime::pallet_index(9)]
 	pub type PoolModule = pallet_pool;
+
+	#[runtime::pallet_index(10)]
+	pub type DataModule = pallet_data;
 }
 
 /// The address format for describing accounts.
