@@ -16,6 +16,11 @@ use sp_std::prelude::*;
 use sp_std::fmt::Debug;
 use codec::EncodeLike;
 use frame_system::pallet_prelude::BlockNumberFor;
+use sp_runtime::traits::SaturatedConversion;
+
+// Import the runtime API trait
+pub mod runtime_api;
+use crate::runtime_api::runtime_decl_for_pool_api::PoolApi;
 
 
 pub trait PoolInterface {
@@ -489,7 +494,7 @@ pub mod pallet {
                                 members.push((member.clone(), user.peer_id.clone()));
                             }
                         }
-                        pools.push((pid, pool.name.clone(), pool.region.clone(), frame_system::Pallet::<T>::block_number(), pool.owner.clone(), pool.owner.as_ref().map(|owner| Users::<T>::get(owner).unwrap().peer_id.clone()), members));
+                        pools.push((pid, pool.name.clone(), pool.region.clone(), frame_system::Pallet::<T>::block_number().saturated_into(), pool.owner.clone(), pool.owner.as_ref().map(|owner| Users::<T>::get(owner).unwrap().peer_id.clone()), members));
                     }
                 } else {
                     let mut members: Vec<(T::AccountId, BoundedVec<u8, T::StringLimit>)> = Vec::new();
@@ -498,7 +503,7 @@ pub mod pallet {
                             members.push((member.clone(), user.peer_id.clone()));
                         }
                     }
-                    pools.push((pid, pool.name.clone(), pool.region.clone(), frame_system::Pallet::<T>::block_number(), pool.owner.clone(), pool.owner.as_ref().map(|owner| Users::<T>::get(owner).unwrap().peer_id.clone()), members));
+                    pools.push((pid, pool.name.clone(), pool.region.clone(), frame_system::Pallet::<T>::block_number().saturated_into(), pool.owner.clone(), pool.owner.as_ref().map(|owner| Users::<T>::get(owner).unwrap().peer_id.clone()), members));
                 }
             }
 
@@ -523,10 +528,10 @@ pub mod pallet {
             for (pid, user_id, request) in PoolRequests::<T>::iter().map(|(pid, user_id, request)| (pid, user_id, request)) {
                 if let Some(id) = pool_id {
                     if pid == id {
-                        requests.push((user_id.clone(), request.peer_id.clone(), frame_system::Pallet::<T>::block_number()));
+                        requests.push((user_id.clone(), request.peer_id.clone(), frame_system::Pallet::<T>::block_number().saturated_into()));
                     }
                 } else {
-                    requests.push((user_id.clone(), request.peer_id.clone(), frame_system::Pallet::<T>::block_number()));
+                    requests.push((user_id.clone(), request.peer_id.clone(), frame_system::Pallet::<T>::block_number().saturated_into()));
                 }
             }
 
@@ -536,6 +541,77 @@ pub mod pallet {
             Ok(())
         }
 
+    }
+
+    impl<T: Config + Send> PoolApi<
+        <T as frame_system::Config>::Block, 
+        T::AccountId, 
+        PoolId, 
+        BoundedVec<u8, T::StringLimit>
+    > for Pallet<T> {
+        fn get_pool_members(pool_id: Option<PoolId>, account_id: Option<T::AccountId>) -> Vec<(T::AccountId, BoundedVec<u8, T::StringLimit>, PoolId)> {
+            let mut members: Vec<(T::AccountId, BoundedVec<u8, T::StringLimit>, PoolId)> = Vec::new();
+
+            for (user_id, user) in Users::<T>::iter() {
+                if let Some(pid) = pool_id {
+                    if user.pool_id == Some(pid) {
+                        members.push((user_id.clone(), user.peer_id.clone(), pid));
+                    }
+                } else if let Some(ref aid) = account_id {
+                    if user_id == *aid {
+                        if let Some(pid) = user.pool_id {
+                            members.push((user_id.clone(), user.peer_id.clone(), pid));
+                        }
+                    }
+                }
+            }
+
+            members
+        }
+
+        fn list_pools(pool_id: Option<PoolId>) -> Vec<(PoolId, BoundedVec<u8, T::StringLimit>, BoundedVec<u8, T::StringLimit>, u32, Option<T::AccountId>, Option<BoundedVec<u8, T::StringLimit>>, Vec<(T::AccountId, BoundedVec<u8, T::StringLimit>)>)> {
+            let mut pools: Vec<(PoolId, BoundedVec<u8, T::StringLimit>, BoundedVec<u8, T::StringLimit>, u32, Option<T::AccountId>, Option<BoundedVec<u8, T::StringLimit>>, Vec<(T::AccountId, BoundedVec<u8, T::StringLimit>)>)> = Vec::new();
+
+            for (pid, pool) in Pools::<T>::iter() {
+                if let Some(id) = pool_id {
+                    if pid == id {
+                        let mut members: Vec<(T::AccountId, BoundedVec<u8, T::StringLimit>)> = Vec::new();
+                        for member in pool.participants.iter() {
+                            if let Some(user) = Users::<T>::get(member) {
+                                members.push((member.clone(), user.peer_id.clone()));
+                            }
+                        }
+                        pools.push((pid, pool.name.clone(), pool.region.clone(), frame_system::Pallet::<T>::block_number().saturated_into(), pool.owner.clone(), pool.owner.as_ref().map(|owner| Users::<T>::get(owner).unwrap().peer_id.clone()), members));
+                    }
+                } else {
+                    let mut members: Vec<(T::AccountId, BoundedVec<u8, T::StringLimit>)> = Vec::new();
+                    for member in pool.participants.iter() {
+                        if let Some(user) = Users::<T>::get(member) {
+                            members.push((member.clone(), user.peer_id.clone()));
+                        }
+                    }
+                    pools.push((pid, pool.name.clone(), pool.region.clone(), frame_system::Pallet::<T>::block_number().saturated_into(), pool.owner.clone(), pool.owner.as_ref().map(|owner| Users::<T>::get(owner).unwrap().peer_id.clone()), members));
+                }
+            }
+
+            pools
+        }
+
+        fn list_pool_join_requests(pool_id: Option<PoolId>) -> Vec<(T::AccountId, BoundedVec<u8, T::StringLimit>, u32)> {
+            let mut requests: Vec<(T::AccountId, BoundedVec<u8, T::StringLimit>, u32)> = Vec::new();
+
+            for (pid, user_id, request) in PoolRequests::<T>::iter() {
+                if let Some(id) = pool_id {
+                    if pid == id {
+                        requests.push((user_id.clone(), request.peer_id.clone(), frame_system::Pallet::<T>::block_number().saturated_into()));
+                    }
+                } else {
+                    requests.push((user_id.clone(), request.peer_id.clone(), frame_system::Pallet::<T>::block_number().saturated_into()));
+                }
+            }
+
+            requests
+        }
     }
 
     impl<T: Config> Pallet<T> {

@@ -19,6 +19,8 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use scale_info::{build::Fields, Path, Type, TypeInfo};
 use frame_support::genesis_builder_helper::{build_config, create_default_config};
+use pallet_pool::runtime_api::runtime_decl_for_pool_api::PoolApi;
+
 pub use frame_support::{
 	construct_runtime, derive_impl, parameter_types,
 	traits::{
@@ -108,6 +110,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	transaction_version: 1,
 	state_version: 1,
 };
+
 
 /// This determines the average expected block time that we are targeting.
 /// Blocks will be produced at a minimum duration defined by `SLOT_DURATION`.
@@ -563,6 +566,20 @@ impl_runtime_apis! {
 			TransactionPayment::length_to_fee(length)
 		}
 	}
+
+	impl PoolApi<Block, AccountId, PoolId, BoundedVec<u8, StringLimit>> for Runtime {
+        fn get_pool_members(&self, pool_id: Option<PoolId>, account_id: Option<AccountId>) -> Vec<(AccountId, BoundedVec<u8, StringLimit>, PoolId)> {
+            Pool::get_pool_members(pool_id, account_id)
+        }
+
+        fn list_pools(&self, pool_id: Option<PoolId>) -> Vec<(PoolId, BoundedVec<u8, StringLimit>, BoundedVec<u8, StringLimit>, u32, Option<AccountId>, Option<BoundedVec<u8, StringLimit>>, Vec<(AccountId, BoundedVec<u8, StringLimit>)>)> {
+            Pool::list_pools(pool_id)
+        }
+
+        fn list_pool_join_requests(&self, pool_id: Option<PoolId>) -> Vec<(AccountId, BoundedVec<u8, StringLimit>, u32)> {
+            Pool::list_pool_join_requests(pool_id)
+        }
+    }
 
 	impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentCallApi<Block, Balance, RuntimeCall>
 		for Runtime
